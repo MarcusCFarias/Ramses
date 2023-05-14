@@ -1,0 +1,193 @@
+; Programa e variáveis entre 00 e BF
+
+ORG 0
+	
+						; Programa consiste em pegar o primeiro vetor de entrada e posicionar todos os seus bits na ultima posição do devido vetor de saida,
+						; após isso se da um shift right para alinhar para a proxima operacao do proximo vetor de entrada
+						; apos finalizar, é verificado se faltou alinhar os bits de saida dependendo do numero de vetores de entrada que tiveram
+						; depois de alinhar, o vetor de saida esta preenchido corretamente
+						; o nome das funções são bem descritivos, então conforme o programa roda, é possível acompanhar a partir do nome das funções
+LoopVetorEntrada:
+
+	LDR X, TamanhoVetorEntrada
+	SUB X ContadorVetoresEntrada
+	JZ AjustarBytesDeSaida
+
+	JSR EnderecoAtualVetorEntrada
+	JSR ValorAtualVetorEntrada
+	
+LoopShiftBitsValorEntrada:
+
+	LDR X, #8				; 1 byte = 8 bits
+	SUB X, ContadorShiftValorEntrada
+	JZ AumentarUmContadorVetorEntrada
+
+	JSR ShiftNoVetorDeEntradaAux
+
+	JSR PreencherVetorSaida		
+
+	JSR AumentarUmContadorShiftValorEntrada
+	JMP LoopShiftBitsValorEntrada
+
+ShiftNoVetorDeEntradaAux:
+	
+	NOP
+
+	LDR A, ValorVetorEntradaAux
+	LDR B, ValorVetorEntradaAux
+	SHR B
+	STR B, ValorVetorEntradaAux
+
+	JMP ShiftNoVetorDeEntradaAux, I
+
+PreencherVetorSaida:
+	
+	NOP 
+	
+	LDR B, EndInicioVetorSaida
+	ADD B, ContadorVetoresSaida
+	STR B, EndVetorSaidaAux
+	
+	LDR B, EndVetorSaidaAux, I
+	
+	SHR B
+
+	AND A, #1
+
+	JZ PulaAdicionarBit 	
+
+	OR B, #128
+
+	PulaAdicionarBit:
+		STR B EndVetorSaidaAux, I
+		LDR X, ContadorVetoresSaida
+		ADD X, #1
+		STR X, ContadorVetoresSaida
+		JMP PreencherVetorSaida, I
+
+AumentarUmContadorVetorEntrada:
+	
+	LDR X, ContadorVetoresEntrada
+	ADD X, #1
+	STR X, ContadorVetoresEntrada
+	JSR ZerarContadorShiftEntrada
+	JSR ZerarContatorVetorSaida
+	JMP LoopVetorEntrada
+
+AumentarUmContadorShiftValorEntrada:
+	
+	NOP
+	
+	LDR X, ContadorShiftValorEntrada
+	ADD X, #1
+	STR X, ContadorShiftValorEntrada
+
+	JMP AumentarUmContadorShiftValorEntrada, I	
+
+ZerarContadorShiftEntrada:
+
+	NOP
+	LDR X, #0
+	STR X, 	ContadorShiftValorEntrada
+	JMP ZerarContadorShiftEntrada, I
+
+ZerarContatorVetorSaida:
+
+	NOP
+	LDR X, #0
+	STR X, 	ContadorVetoresSaida
+	JMP ZerarContatorVetorSaida, I
+
+EnderecoAtualVetorEntrada:
+	
+	NOP
+	LDR B, EndInicioVetorEntrada
+	ADD B, ContadorVetoresEntrada
+	STR B, EndVetorEntradaAux
+	JMP EnderecoAtualVetorEntrada, I
+
+ValorAtualVetorEntrada:
+	
+	NOP
+	LDR A, EndVetorEntradaAux, I
+	STR A, ValorVetorEntradaAux
+	JMP ValorAtualVetorEntrada, I
+
+SetarContadorShiftVetorSaidaRestantes:
+	
+	NOP
+	LDR B, #8			
+	SUB B, TamanhoVetorEntrada
+	STR B ContadorShiftVetorSaidaRestantes
+	JMP SetarContadorShiftVetorSaidaRestantes, I
+	
+ShiftVetor:
+	NOP
+	LDR B, EndVetorSaidaAux, I
+	SHR B
+	STR B, EndVetorSaidaAux, I
+	JMP ShiftVetor, I
+				
+AjustarBytesDeSaida:
+						; antes de chegar no fim, o programa tem que ajustar os bits que não foram movimentados
+						; se o tamanho for igual, n tem oq ser ajustado
+
+	LDR X, #8			
+	SUB X, TamanhoVetorEntrada
+	JZ Fim
+
+	LDR A, EndInicioVetorSaida 		; volta para o primeiro vetor de saida
+	STR A, EndVetorSaidaAux
+
+	LoopVetorSaida:
+
+		JSR SetarContadorShiftVetorSaidaRestantes
+
+		LDR X, #8
+		SUB X, ContadorVetoresSaida
+		JZ Fim
+		
+		LDR B, EndInicioVetorSaida
+		ADD B, ContadorVetoresSaida
+		STR B, EndVetorSaidaAux
+
+		LoopBitsVetorSaida:
+				
+			JSR ShiftVetor
+
+			LDR X, ContadorShiftVetorSaidaRestantes
+			SUB X, #1
+			STR X, ContadorShiftVetorSaidaRestantes
+			JZ ProximoVetorSaida
+			JMP LoopBitsVetorSaida	
+			
+		ProximoVetorSaida:	
+			LDR B, ContadorVetoresSaida
+			ADD B, #1
+			STR B, ContadorVetoresSaida
+			JMP LoopVetorSaida
+Fim: 
+						; zerando os contadores
+	LDR A, #0
+	LDR B, #0
+	STR A, ContadorVetoresEntrada
+	STR A, ContadorShiftValorEntrada
+	STR A, ContadorVetoresSaida
+
+	HLT
+						; variaveis auxiliares
+	ContadorVetoresEntrada: DB 0
+	ContadorShiftValorEntrada: DB 0
+	EndVetorEntradaAux: DB 0
+	ValorVetorEntradaAux: DB 0
+
+	ContadorVetoresSaida: DB 0
+	ContadorShiftVetorSaidaRestantes: DB 0
+	EndVetorSaidaAux: DB 0
+				
+ORG 192						; aqui são as variáveis fixas
+	
+	EndInicioVetorEntrada: DB 210
+	TamanhoVetorEntrada: DB 3
+	EndInicioVetorSaida: DB 195
+
